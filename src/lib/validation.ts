@@ -42,8 +42,11 @@ export function parseBookingInput(raw: unknown): BookingParseResult {
   let packageId: number | null = null;
   const rawPackageId = body.packageId;
   if (rawPackageId !== undefined && rawPackageId !== null && rawPackageId !== "") {
+    if (typeof rawPackageId !== "string" && typeof rawPackageId !== "number") {
+      return { ok: false, error: "所选套系无效" };
+    }
     const parsed = Number(rawPackageId);
-    if (!Number.isInteger(parsed) || parsed <= 0) {
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
       return { ok: false, error: "所选套系无效" };
     }
     packageId = parsed;

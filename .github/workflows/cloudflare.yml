@@ -1,0 +1,93 @@
+name: Cloudflare deployment
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      # Allow the initial deployment to be verified before this migration merges.
+      - arena/6bb6a27a-wedding-photography-studio-web
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run db:local
+      - run: npm run seed:local
+      - name: Test against local D1
+        env:
+          TEST_ADMIN_PASSWORD: local-ci-only
+        run: |
+          npm run dev -- --var ADMIN_PASSWORD:local-ci-only > "$RUNNER_TEMP/wrangler.log" 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          if ! curl --fail --silent --show-error --retry 30 --retry-all-errors --retry-delay 1 --max-time 2 http://localhost:8787/api/health; then
+            cat "$RUNNER_TEMP/wrangler.log"
+            exit 1
+          fi
+          npm test
+
+  deploy:
+    needs: verify
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cloudflare-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Discover Cloudflare account and provision D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          node scripts/provision-d1.mjs
+      - name: Configure production D1 binding
+        run: node scripts/configure-d1.mjs
+      - name: Apply remote D1 migrations and deploy Worker
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: |
+          set -o pipefail
+          npm run db:remote
+          args=()
+          if [[ -n "$ADMIN_PASSWORD" ]]; then
+            secret_file=$(mktemp "$RUNNER_TEMP/worker-secrets.XXXXXX")
+            trap 'rm -f "$secret_file"' EXIT
+            node -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify({ADMIN_PASSWORD:process.env.ADMIN_PASSWORD}))' "$secret_file"
+            args+=(--secrets-file "$secret_file")
+          fi
+          unset ADMIN_PASSWORD
+          npm run deploy -- "${args[@]}" | tee "$RUNNER_TEMP/cloudflare-deploy.log"
+          url=$(grep -oE 'https://wedding-photography-studio\.[a-z0-9-]+\.workers\.dev' "$RUNNER_TEMP/cloudflare-deploy.log" | head -n 1)
+          test -n "$url"
+          curl --fail --silent --show-error --retry 5 "$url/api/health"
+          curl --fail --silent --show-error --retry 5 "$url/admin" -o "$RUNNER_TEMP/admin.html"
+          if grep -q 'name="password"' "$RUNNER_TEMP/admin.html"; then
+            echo 'Admin login is enabled on the live Worker.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '::warning::Admin login is disabled. Set ADMIN_PASSWORD as an Actions secret or directly on the Cloudflare Worker.'
+          fi
+          printf 'url=%s\n' "$url" >> "$GITHUB_OUTPUT"
+          printf '### Deployed site: [%s](%s)\n' "$url" "$url" >> "$GITHUB_STEP_SUMMARY"

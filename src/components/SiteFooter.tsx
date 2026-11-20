@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { siteConfig } from "@/lib/site";
 
 export function SiteFooter() {
@@ -16,9 +15,9 @@ export function SiteFooter() {
           <ul className="mt-5 space-y-3 text-sm">
             {[...siteConfig.nav, siteConfig.cta].map((item) => (
               <li key={item.href}>
-                <Link href={item.href} className="transition hover:text-gold">
+                <a href={item.href} className="transition hover:text-gold">
                   {item.label}
-                </Link>
+                </a>
               </li>
             ))}
           </ul>
@@ -41,9 +40,9 @@ export function SiteFooter() {
           <p>
             © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
           </p>
-          <Link href="/admin" className="transition hover:text-gold">
+          <a href="/admin" className="transition hover:text-gold">
             管理后台
-          </Link>
+          </a>
         </div>
       </div>
     </footer>

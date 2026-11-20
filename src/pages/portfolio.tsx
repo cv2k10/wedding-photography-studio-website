@@ -1,24 +1,21 @@
-import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
 import { asc, desc, eq } from "drizzle-orm";
-import { db } from "@/db";
+import { type Database } from "@/db";
 import { portfolioItems } from "@/db/schema";
 import { SectionHeading } from "@/components/SectionHeading";
 import { portfolioCategories } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "作品展示",
 };
 
 type PortfolioPageProps = {
-  searchParams: Promise<{ cat?: string }>;
+  db: Database;
+  searchParams: { cat?: string };
 };
 
-export default async function PortfolioPage({ searchParams }: PortfolioPageProps) {
-  const { cat } = await searchParams;
+export default async function PortfolioPage({ db, searchParams }: PortfolioPageProps) {
+  const { cat } = searchParams;
   const requested = cat ?? "全部";
   const active = (portfolioCategories as readonly string[]).includes(requested) ? requested : "全部";
 
@@ -45,7 +42,7 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
           {portfolioCategories.map((item) => {
             const isActive = item === active;
             return (
-              <Link
+              <a
                 key={item}
                 href={item === "全部" ? "/portfolio" : `/portfolio?cat=${encodeURIComponent(item)}`}
                 className={`rounded-full px-5 py-2 text-sm tracking-widest transition ${
@@ -55,7 +52,7 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
                 }`}
               >
                 {item}
-              </Link>
+              </a>
             );
           })}
         </nav>
@@ -69,13 +66,12 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
                 key={work.id}
                 className="group relative aspect-[3/4] overflow-hidden rounded-2xl bg-champagne"
               >
-                <Image
+                <img
                   src={work.imageUrl}
                   alt={work.title}
-                  fill
-                  unoptimized
-                  sizes="(min-width: 1024px) 33vw, 50vw"
-                  className="object-cover transition duration-700 group-hover:scale-105"
+                  loading="lazy"
+
+                  className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
                 />
                 <figcaption className="absolute inset-x-0 bottom-0 bg-linear-to-t from-ink/85 via-ink/30 to-transparent p-5 pt-20 text-white">
                   <span className="rounded-full bg-white/15 px-3 py-0.5 text-xs tracking-widest backdrop-blur">
@@ -97,12 +93,12 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
           <div className="rounded-3xl bg-ink px-8 py-12 text-center text-white md:px-16">
             <h2 className="font-serif text-2xl md:text-3xl">想拍出同样的感觉？</h2>
             <p className="mt-3 text-sm text-white/75">告诉我们你们的风格偏好，顾问为你推荐最合适的拍摄方案。</p>
-            <Link
+            <a
               href="/booking"
               className="mt-8 inline-block rounded-full bg-gold px-8 py-3 text-sm tracking-widest text-white transition hover:bg-gold-dark"
             >
               预约风格咨询
-            </Link>
+            </a>
           </div>
         </div>
       </section>

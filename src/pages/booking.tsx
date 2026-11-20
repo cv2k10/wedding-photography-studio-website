@@ -1,19 +1,20 @@
-import type { Metadata } from "next";
 import { asc } from "drizzle-orm";
-import { db } from "@/db";
+import { type Database } from "@/db";
 import { packages } from "@/db/schema";
 import { BookingForm } from "@/components/BookingForm";
 import { SectionHeading } from "@/components/SectionHeading";
 import { siteConfig } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "预约咨询",
 };
 
 type BookingPageProps = {
-  searchParams: Promise<{ package?: string }>;
+  db: Database;
+  bookingId?: number;
+  errorText?: string;
+  searchParams: { package?: string };
 };
 
 const steps = [
@@ -23,8 +24,8 @@ const steps = [
   { title: "锁定档期", desc: "支付定金，正式锁定拍摄日期" },
 ];
 
-export default async function BookingPage({ searchParams }: BookingPageProps) {
-  const { package: packageParam } = await searchParams;
+export default async function BookingPage({ db, searchParams, bookingId, errorText }: BookingPageProps) {
+  const { package: packageParam } = searchParams;
 
   const options = await db
     .select({
@@ -52,7 +53,7 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
       </section>
 
       <section className="mx-auto grid max-w-6xl gap-12 px-6 py-20 lg:grid-cols-[1fr_340px]">
-        <BookingForm packages={options} defaultPackageId={defaultPackageId} />
+        <BookingForm bookingId={bookingId} errorText={errorText} packages={options} defaultPackageId={defaultPackageId} />
 
         <aside className="space-y-8">
           <div className="rounded-3xl bg-ink p-8 text-white">

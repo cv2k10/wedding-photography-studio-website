@@ -1,6 +1,5 @@
-import "dotenv/config";
-import { count } from "drizzle-orm";
-import { db, pool } from "@/db";
+import { writeFileSync } from "node:fs";
+import { drizzle } from "drizzle-orm/sqlite-proxy";
 import {
   packages,
   photographers,
@@ -10,7 +9,7 @@ import {
   type NewPhotographer,
   type NewPortfolioItem,
   type NewTestimonial,
-} from "@/db/schema";
+} from "../src/db/schema";
 
 /** Pexels 图片直链（按需裁切尺寸） */
 const photo = (id: number, width: number, height: number) =>
@@ -155,38 +154,27 @@ const photographerSeed: NewPhotographer[] = [
   },
 ];
 
-/** 仅在对应数据表为空时写入示例数据，避免重复执行时覆盖真实数据 */
-async function main() {
-  const [{ value: packageCount }] = await db.select({ value: count() }).from(packages);
-  if (packageCount === 0) {
-    await db.insert(packages).values(packageSeed);
-    console.log(`已写入 ${packageSeed.length} 个套系`);
-  }
+const db = drizzle(async () => ({ rows: [] }));
+const quote = (value: unknown): string => {
+  if (value === null) return "NULL";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") return "'" + value.replaceAll("'", "''") + "'";
+  throw new TypeError("Unexpected seed parameter");
+};
 
-  const [{ value: portfolioCount }] = await db.select({ value: count() }).from(portfolioItems);
-  if (portfolioCount === 0) {
-    await db.insert(portfolioItems).values(portfolioSeed);
-    console.log(`已写入 ${portfolioSeed.length} 件作品`);
-  }
+const statements = [
+  ["packages", db.insert(packages).values(packageSeed).toSQL()],
+  ["portfolio_items", db.insert(portfolioItems).values(portfolioSeed).toSQL()],
+  ["testimonials", db.insert(testimonials).values(testimonialSeed).toSQL()],
+  ["photographers", db.insert(photographers).values(photographerSeed).toSQL()],
+] as const;
 
-  const [{ value: testimonialCount }] = await db.select({ value: count() }).from(testimonials);
-  if (testimonialCount === 0) {
-    await db.insert(testimonials).values(testimonialSeed);
-    console.log(`已写入 ${testimonialSeed.length} 条好评`);
-  }
-
-  const [{ value: photographerCount }] = await db.select({ value: count() }).from(photographers);
-  if (photographerCount === 0) {
-    await db.insert(photographers).values(photographerSeed);
-    console.log(`已写入 ${photographerSeed.length} 位摄影师`);
-  }
-
-  console.log("种子数据检查完成");
-}
-
-main()
-  .catch((error: unknown) => {
-    console.error("种子数据写入失败：", error);
-    process.exitCode = 1;
-  })
-  .finally(() => pool.end());
+const sql = statements.map(([table, statement]) => {
+  let index = 0;
+  // Convert multi-row VALUES into a CTE with an empty-table guard.
+  const expanded = statement.sql.replace(/\?/g, () => quote(statement.params[index++]));
+  const [insert, values] = expanded.split(" values ");
+  const columns = insert.slice(insert.indexOf("(") + 1, insert.lastIndexOf(")"));
+  return `WITH demo(${columns}) AS (VALUES ${values})\n${insert} SELECT * FROM demo WHERE NOT EXISTS (SELECT 1 FROM ${table});`;
+});
+writeFileSync("seeds/demo.sql", "-- Generated demo content. Does not overwrite existing rows.\n" + sql.join("\n\n") + "\n");

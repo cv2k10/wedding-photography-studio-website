@@ -1,14 +1,11 @@
-import type { Metadata } from "next";
-import Link from "next/link";
 import { asc } from "drizzle-orm";
-import { db } from "@/db";
+import { type Database } from "@/db";
 import { packages } from "@/db/schema";
 import { PackageCard } from "@/components/PackageCard";
 import { SectionHeading } from "@/components/SectionHeading";
 
-export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "套系价格",
 };
 
@@ -36,7 +33,7 @@ function GroupTitle({ en, zh }: { en: string; zh: string }) {
   );
 }
 
-export default async function PackagesPage() {
+export default async function PackagesPage(db: Database) {
   const rows = await db
     .select()
     .from(packages)
@@ -89,12 +86,12 @@ export default async function PackagesPage() {
           ))}
         </div>
         <div className="mt-14 text-center">
-          <Link
+          <a
             href="/booking"
             className="inline-block rounded-full bg-gold px-8 py-3.5 text-sm tracking-widest text-white transition hover:bg-gold-dark"
           >
             预约咨询，获取专属报价
-          </Link>
+          </a>
         </div>
       </section>
     </>

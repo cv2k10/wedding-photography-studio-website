@@ -1,15 +1,11 @@
-import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
 import { asc } from "drizzle-orm";
-import { db } from "@/db";
+import { type Database } from "@/db";
 import { photographers } from "@/db/schema";
 import { SectionHeading } from "@/components/SectionHeading";
 import { siteConfig } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "关于我们",
 };
 
@@ -31,7 +27,7 @@ const philosophy = [
   },
 ];
 
-export default async function AboutPage() {
+export default async function AboutPage(db: Database) {
   const team = await db
     .select()
     .from(photographers)
@@ -93,13 +89,12 @@ export default async function AboutPage() {
 
       <section className="mx-auto grid max-w-6xl gap-8 px-6 py-24 md:grid-cols-2">
         <div className="relative min-h-[360px] overflow-hidden rounded-3xl bg-champagne">
-          <Image
+          <img
             src={STUDIO_IMAGE}
             alt="户外婚纱拍摄"
-            fill
-            unoptimized
-            sizes="(min-width: 768px) 50vw, 100vw"
-            className="object-cover"
+            loading="lazy"
+
+            className="absolute inset-0 h-full w-full object-cover"
           />
         </div>
         <div className="flex flex-col justify-center rounded-3xl bg-white p-10 ring-1 ring-gold/15">
@@ -124,12 +119,12 @@ export default async function AboutPage() {
               <dd className="mt-1 text-ink">{siteConfig.hours}</dd>
             </div>
           </dl>
-          <Link
+          <a
             href="/booking"
             className="mt-10 inline-flex w-fit rounded-full bg-gold px-8 py-3 text-sm tracking-widest text-white transition hover:bg-gold-dark"
           >
             预约到店参观
-          </Link>
+          </a>
         </div>
       </section>
     </>
