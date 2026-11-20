@@ -192,17 +192,18 @@ function LoginScreen({ failed, configured }: { failed: boolean; configured: bool
 
         {!configured ? (
           <p className="mt-6 rounded-xl bg-amber-50 p-3 text-sm text-amber-700">
-            尚未配置 ADMIN_PASSWORD，请在 Worker 中设置后重启服务。
+            尚未配置 ADMIN_PASSWORD，请在 Cloudflare Worker 中设置此密钥。
           </p>
         ) : null}
-        {failed ? (
+        {configured && failed ? (
           <p className="mt-6 rounded-xl bg-red-50 p-3 text-sm text-red-600">密码错误，请重试</p>
         ) : null}
 
-        <form method="post" action="/admin/login" className="mt-6 space-y-4">
+        {configured && <form method="post" action="/admin/login" className="mt-6 space-y-4">
           <input
             type="password"
             name="password"
+            autoComplete="current-password"
             required
             placeholder="管理员密码"
             className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900"
@@ -213,7 +214,7 @@ function LoginScreen({ failed, configured }: { failed: boolean; configured: bool
           >
             登录
           </button>
-        </form>
+        </form>}
 
         <a href="/" className="mt-6 block text-center text-sm text-slate-500 hover:text-slate-900">
           返回官网

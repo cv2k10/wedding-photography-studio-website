@@ -55,4 +55,4 @@ Under **Settings → Secrets and variables → Actions**, configure:
 | `CLOUDFLARE_ACCOUNT_ID` | Variable or secret | Optional account ID override. Required if the token can see more than one account. |
 | `CLOUDFLARE_D1_DATABASE_ID` | Variable | Optional D1 database ID override. Without it the workflow reuses or creates `wedding-studio`. |
 
-The workflow never seeds remote demo data or changes the Worker’s `ADMIN_PASSWORD` secret. Set that secret separately in Cloudflare.
+The workflow never seeds remote demo data. If the `ADMIN_PASSWORD` Actions secret is set, deployment copies it to the Worker. Otherwise the workflow leaves any existing Cloudflare Worker secret unchanged.

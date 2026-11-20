@@ -102,7 +102,8 @@ app.get("/admin", async (c) => page(c, admin, await AdminPage({
 app.post("/admin/login", async (c) => {
   const form = await c.req.parseBody();
   const password = c.env.ADMIN_PASSWORD;
-  if (!password || typeof form.password !== "string" || !(await verifyAdminPassword(form.password, password))) {
+  if (!password) return c.redirect("/admin", 303);
+  if (typeof form.password !== "string" || !(await verifyAdminPassword(form.password, password))) {
     return c.redirect("/admin?error=1", 303);
   }
   await startAdminSession(c, password);

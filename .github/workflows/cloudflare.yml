@@ -67,12 +67,27 @@ jobs:
         id: deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
         run: |
           set -o pipefail
           npm run db:remote
-          npm run deploy | tee "$RUNNER_TEMP/cloudflare-deploy.log"
+          args=()
+          if [[ -n "$ADMIN_PASSWORD" ]]; then
+            secret_file=$(mktemp "$RUNNER_TEMP/worker-secrets.XXXXXX")
+            trap 'rm -f "$secret_file"' EXIT
+            node -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify({ADMIN_PASSWORD:process.env.ADMIN_PASSWORD}))' "$secret_file"
+            args+=(--secrets-file "$secret_file")
+          fi
+          unset ADMIN_PASSWORD
+          npm run deploy -- "${args[@]}" | tee "$RUNNER_TEMP/cloudflare-deploy.log"
           url=$(grep -oE 'https://wedding-photography-studio\.[a-z0-9-]+\.workers\.dev' "$RUNNER_TEMP/cloudflare-deploy.log" | head -n 1)
           test -n "$url"
           curl --fail --silent --show-error --retry 5 "$url/api/health"
+          curl --fail --silent --show-error --retry 5 "$url/admin" -o "$RUNNER_TEMP/admin.html"
+          if grep -q 'name="password"' "$RUNNER_TEMP/admin.html"; then
+            echo 'Admin login is enabled on the live Worker.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '::warning::Admin login is disabled. Set ADMIN_PASSWORD as an Actions secret or directly on the Cloudflare Worker.'
+          fi
           printf 'url=%s\n' "$url" >> "$GITHUB_OUTPUT"
           printf '### Deployed site: [%s](%s)\n' "$url" "$url" >> "$GITHUB_STEP_SUMMARY"
