@@ -40,6 +40,9 @@ jobs:
 
   deploy:
     needs: verify
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
     runs-on: ubuntu-latest
     concurrency:
       group: cloudflare-production
@@ -61,8 +64,15 @@ jobs:
       - name: Configure production D1 binding
         run: node scripts/configure-d1.mjs
       - name: Apply remote D1 migrations and deploy Worker
+        id: deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
+          set -o pipefail
           npm run db:remote
-          npm run deploy
+          npm run deploy | tee "$RUNNER_TEMP/cloudflare-deploy.log"
+          url=$(grep -oE 'https://wedding-photography-studio\.[a-z0-9-]+\.workers\.dev' "$RUNNER_TEMP/cloudflare-deploy.log" | head -n 1)
+          test -n "$url"
+          curl --fail --silent --show-error --retry 5 "$url/api/health"
+          printf 'url=%s\n' "$url" >> "$GITHUB_OUTPUT"
+          printf '### Deployed site: [%s](%s)\n' "$url" "$url" >> "$GITHUB_STEP_SUMMARY"
