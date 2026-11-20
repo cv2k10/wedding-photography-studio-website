@@ -1,16 +1,12 @@
-import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
-import { db } from "@/db";
+import { type Database } from "@/db";
 import { packages, portfolioItems, testimonials } from "@/db/schema";
 import { PackageCard } from "@/components/PackageCard";
 import { SectionHeading } from "@/components/SectionHeading";
 import { siteConfig } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: { absolute: `${siteConfig.name} | 婚纱摄影工作室` },
 };
 
@@ -40,7 +36,7 @@ const highlights = [
   },
 ];
 
-export default async function HomePage() {
+export default async function HomePage(db: Database) {
   const [featuredPackages, featuredWorks, reviews] = await Promise.all([
     db
       .select()
@@ -65,14 +61,12 @@ export default async function HomePage() {
     <>
       {/* Hero */}
       <section className="relative isolate flex min-h-[90vh] items-center overflow-hidden">
-        <Image
+        <img
           src={HERO_IMAGE}
           alt="新人在落日余晖中相拥"
-          fill
-          priority
-          unoptimized
-          sizes="100vw"
-          className="-z-10 object-cover"
+          fetchPriority="high"
+
+          className="absolute inset-0 h-full w-full -z-10 object-cover"
         />
         <div className="absolute inset-0 -z-10 bg-linear-to-r from-ink/85 via-ink/50 to-ink/10" />
 
@@ -87,18 +81,18 @@ export default async function HomePage() {
             从初次相遇到携手一生，拾光陪你把最美的故事装进画框。十余年专注婚纱摄影与婚礼跟拍，让每一个真实的笑容都被温柔珍藏。
           </p>
           <div className="animate-fade-up mt-10 flex flex-wrap gap-4">
-            <Link
+            <a
               href="/booking"
               className="rounded-full bg-gold px-8 py-3.5 text-sm tracking-widest text-white shadow-lg shadow-black/20 transition hover:bg-gold-dark"
             >
               预约拍摄咨询
-            </Link>
-            <Link
+            </a>
+            <a
               href="/portfolio"
               className="rounded-full border border-white/70 px-8 py-3.5 text-sm tracking-widest text-white transition hover:bg-white hover:text-ink"
             >
               浏览精选作品
-            </Link>
+            </a>
           </div>
         </div>
       </section>
@@ -150,12 +144,12 @@ export default async function HomePage() {
             ))}
           </div>
           <div className="mt-14 text-center">
-            <Link
+            <a
               href="/packages"
               className="text-sm tracking-widest text-gold underline-offset-8 hover:underline"
             >
               查看全部套系与价格 →
-            </Link>
+            </a>
           </div>
         </div>
       </section>
@@ -173,13 +167,12 @@ export default async function HomePage() {
               key={work.id}
               className="group relative aspect-[3/4] overflow-hidden rounded-2xl bg-champagne"
             >
-              <Image
+              <img
                 src={work.imageUrl}
                 alt={work.title}
-                fill
-                unoptimized
-                sizes="(min-width: 1024px) 33vw, 50vw"
-                className="object-cover transition duration-700 group-hover:scale-105"
+                loading="lazy"
+
+                className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
               />
               <figcaption className="absolute inset-x-0 bottom-0 bg-linear-to-t from-ink/85 to-transparent p-5 pt-16 text-white">
                 <p className="text-xs tracking-widest text-champagne">{work.category}</p>
@@ -189,12 +182,12 @@ export default async function HomePage() {
           ))}
         </div>
         <div className="mt-14 text-center">
-          <Link
+          <a
             href="/portfolio"
             className="rounded-full border border-gold px-8 py-3 text-sm tracking-widest text-gold transition hover:bg-gold hover:text-white"
           >
             查看更多作品
-          </Link>
+          </a>
         </div>
       </section>
 
@@ -235,12 +228,12 @@ export default async function HomePage() {
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-4">
-            <Link
+            <a
               href="/booking"
               className="rounded-full bg-white px-8 py-3.5 text-sm tracking-widest text-gold-dark transition hover:bg-ivory"
             >
               立即预约
-            </Link>
+            </a>
             <a
               href={`tel:${siteConfig.phone}`}
               className="rounded-full border border-white/70 px-8 py-3.5 text-sm tracking-widest text-white transition hover:bg-white/10"

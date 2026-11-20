@@ -1,14 +1,9 @@
-import type { Metadata } from "next";
-import Link from "next/link";
 import { desc } from "drizzle-orm";
-import { db } from "@/db";
+import { type Database } from "@/db";
 import { bookings, bookingStatuses, type BookingStatus } from "@/db/schema";
-import { hasAdminSession, isAdminConfigured } from "@/lib/auth";
-import { loginAction, logoutAction, updateBookingStatusAction } from "./actions";
 
-export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "后台管理",
 };
 
@@ -20,11 +15,14 @@ const statusLabel: Record<BookingStatus, string> = {
 };
 
 type AdminPageProps = {
-  searchParams: Promise<{ error?: string; status?: string }>;
+  db: Database;
+  authenticated: boolean;
+  configured: boolean;
+  searchParams: { error?: string; status?: string };
 };
 
-function formatDateTime(value: Date) {
-  return value.toLocaleString("zh-CN", {
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("zh-CN", {
     timeZone: "Asia/Shanghai",
     year: "numeric",
     month: "2-digit",
@@ -35,11 +33,11 @@ function formatDateTime(value: Date) {
   });
 }
 
-export default async function AdminPage({ searchParams }: AdminPageProps) {
-  const { error, status } = await searchParams;
+export default async function AdminPage({ db, searchParams, authenticated, configured }: AdminPageProps) {
+  const { error, status } = searchParams;
 
-  if (!(await hasAdminSession())) {
-    return <LoginScreen failed={error === "1"} configured={isAdminConfigured()} />;
+  if (!authenticated) {
+    return <LoginScreen failed={error === "1"} configured={configured} />;
   }
 
   const rows = await db.select().from(bookings).orderBy(desc(bookings.createdAt), desc(bookings.id));
@@ -59,10 +57,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             <p className="text-xs text-slate-500">预约线索与档期跟进</p>
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <Link href="/" className="rounded-full px-4 py-2 text-slate-600 transition hover:bg-slate-100">
+            <a href="/" className="rounded-full px-4 py-2 text-slate-600 transition hover:bg-slate-100">
               返回官网
-            </Link>
-            <form action={logoutAction}>
+            </a>
+            <form method="post" action="/admin/logout">
               <button
                 type="submit"
                 className="rounded-full border border-slate-300 px-4 py-2 text-slate-700 transition hover:bg-slate-100"
@@ -129,7 +127,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <p className="line-clamp-3 whitespace-pre-wrap">{row.message || "—"}</p>
                   </td>
                   <td className="px-4 py-4">
-                    <form action={updateBookingStatusAction} className="flex items-center gap-2">
+                    <form method="post" action="/admin/status" className="flex items-center gap-2">
                       <input type="hidden" name="id" value={row.id} />
                       <select
                         name="status"
@@ -174,14 +172,14 @@ function StatCard({ label, value, accent = "text-slate-900" }: { label: string; 
 
 function FilterLink({ href, active, label }: { href: string; active: boolean; label: string }) {
   return (
-    <Link
+    <a
       href={href}
       className={`rounded-full px-4 py-1.5 text-sm transition ${
         active ? "bg-slate-900 text-white" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:text-slate-900"
       }`}
     >
       {label}
-    </Link>
+    </a>
   );
 }
 
@@ -194,14 +192,14 @@ function LoginScreen({ failed, configured }: { failed: boolean; configured: bool
 
         {!configured ? (
           <p className="mt-6 rounded-xl bg-amber-50 p-3 text-sm text-amber-700">
-            尚未配置 ADMIN_PASSWORD，请在 .env 中设置后重启服务。
+            尚未配置 ADMIN_PASSWORD，请在 Worker 中设置后重启服务。
           </p>
         ) : null}
         {failed ? (
           <p className="mt-6 rounded-xl bg-red-50 p-3 text-sm text-red-600">密码错误，请重试</p>
         ) : null}
 
-        <form action={loginAction} className="mt-6 space-y-4">
+        <form method="post" action="/admin/login" className="mt-6 space-y-4">
           <input
             type="password"
             name="password"
@@ -217,9 +215,9 @@ function LoginScreen({ failed, configured }: { failed: boolean; configured: bool
           </button>
         </form>
 
-        <Link href="/" className="mt-6 block text-center text-sm text-slate-500 hover:text-slate-900">
+        <a href="/" className="mt-6 block text-center text-sm text-slate-500 hover:text-slate-900">
           返回官网
-        </Link>
+        </a>
       </div>
     </div>
   );

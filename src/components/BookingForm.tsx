@@ -1,7 +1,4 @@
-"use client";
-
-import Link from "next/link";
-import { useState, type FormEvent, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export type PackageOption = {
   id: number;
@@ -13,65 +10,19 @@ export type PackageOption = {
 type BookingFormProps = {
   packages: PackageOption[];
   defaultPackageId: number | null;
+  bookingId?: number;
+  errorText?: string;
 };
 
-type SubmitState = "idle" | "submitting" | "success" | "error";
 
 const inputClass =
   "w-full rounded-xl border border-gold/25 bg-ivory/60 px-4 py-3 text-sm text-ink outline-none transition placeholder:text-muted/60 focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/10";
 
-export function BookingForm({ packages, defaultPackageId }: BookingFormProps) {
-  const [state, setState] = useState<SubmitState>("idle");
-  const [errorText, setErrorText] = useState("");
-  const [bookingId, setBookingId] = useState<number | null>(null);
-
+export function BookingForm({ packages, defaultPackageId, bookingId, errorText }: BookingFormProps) {
   const photoPackages = packages.filter((item) => item.category === "photo");
   const weddingPackages = packages.filter((item) => item.category === "wedding");
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    const read = (key: string) => String(data.get(key) ?? "");
-
-    setState("submitting");
-    setErrorText("");
-
-    try {
-      const response = await fetch("/api/bookings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          coupleName: read("coupleName"),
-          phone: read("phone"),
-          wechat: read("wechat"),
-          weddingDate: read("weddingDate"),
-          packageId: read("packageId"),
-          city: read("city"),
-          message: read("message"),
-        }),
-      });
-      const result = (await response.json().catch(() => ({}))) as {
-        id?: number;
-        error?: string;
-      };
-
-      if (!response.ok || typeof result.id !== "number") {
-        setErrorText(result.error ?? "提交失败，请稍后重试");
-        setState("error");
-        return;
-      }
-
-      setBookingId(result.id);
-      setState("success");
-      form.reset();
-    } catch {
-      setErrorText("网络异常，请检查网络后重试");
-      setState("error");
-    }
-  }
-
-  if (state === "success") {
+  if (bookingId) {
     return (
       <div className="rounded-3xl bg-white p-10 text-center shadow-[0_24px_60px_-30px_rgba(45,39,37,0.35)] ring-1 ring-gold/20 md:p-14">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blush text-2xl text-gold">
@@ -87,19 +38,18 @@ export function BookingForm({ packages, defaultPackageId }: BookingFormProps) {
           </p>
         ) : null}
         <div className="mt-10 flex flex-wrap justify-center gap-4">
-          <Link
+          <a
             href="/portfolio"
             className="rounded-full border border-gold px-7 py-3 text-sm tracking-widest text-gold transition hover:bg-gold hover:text-white"
           >
             继续浏览作品
-          </Link>
-          <button
-            type="button"
-            onClick={() => setState("idle")}
+          </a>
+          <a
+            href="/booking"
             className="rounded-full bg-gold px-7 py-3 text-sm tracking-widest text-white transition hover:bg-gold-dark"
           >
             再次预约
-          </button>
+          </a>
         </div>
       </div>
     );
@@ -107,7 +57,7 @@ export function BookingForm({ packages, defaultPackageId }: BookingFormProps) {
 
   return (
     <form
-      onSubmit={handleSubmit}
+      method="post" action="/booking"
       className="rounded-3xl bg-white p-8 shadow-[0_24px_60px_-30px_rgba(45,39,37,0.35)] ring-1 ring-gold/20 md:p-10"
     >
       <h2 className="font-serif text-2xl text-ink md:text-3xl">填写预约信息</h2>
@@ -187,16 +137,15 @@ export function BookingForm({ packages, defaultPackageId }: BookingFormProps) {
         </div>
       </div>
 
-      {state === "error" ? (
+      {errorText ? (
         <p className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{errorText}</p>
       ) : null}
 
       <button
         type="submit"
-        disabled={state === "submitting"}
         className="mt-8 w-full rounded-full bg-gold py-3.5 text-sm tracking-[0.3em] text-white transition hover:bg-gold-dark disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {state === "submitting" ? "正在提交…" : "提交预约"}
+        提交预约
       </button>
     </form>
   );

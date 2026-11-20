@@ -1,5 +1,3 @@
-import Image from "next/image";
-import Link from "next/link";
 import type { Package } from "@/db/schema";
 
 const formatPrice = (value: number) => `¥${value.toLocaleString("zh-CN")}`;
@@ -9,13 +7,12 @@ export function PackageCard({ pkg }: { pkg: Package }) {
     <article className="group flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_20px_50px_-28px_rgba(45,39,37,0.4)] ring-1 ring-gold/15 transition duration-500 hover:-translate-y-1">
       <div className="relative aspect-[4/3] overflow-hidden bg-champagne">
         {pkg.coverImage ? (
-          <Image
+          <img
             src={pkg.coverImage}
             alt={pkg.name}
-            fill
-            unoptimized
-            sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-            className="object-cover transition duration-700 group-hover:scale-105"
+            loading="lazy"
+
+            className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
           />
         ) : null}
         {pkg.badge ? (
@@ -50,12 +47,12 @@ export function PackageCard({ pkg }: { pkg: Package }) {
         </ul>
 
         <div className="mt-auto pt-8">
-          <Link
+          <a
             href={`/booking?package=${pkg.id}`}
             className="block rounded-full border border-gold py-3 text-center text-sm tracking-widest text-gold transition hover:bg-gold hover:text-white"
           >
             预约此套系
-          </Link>
+          </a>
         </div>
       </div>
     </article>

@@ -1,0 +1,66 @@
+name: Cloudflare deployment
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      # Allow the initial deployment to be verified before this migration merges.
+      - arena/6bb6a27a-wedding-photography-studio-web
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run db:local
+      - run: npm run seed:local
+      - name: Test against local D1
+        env:
+          TEST_ADMIN_PASSWORD: local-ci-only
+        run: |
+          npm run dev -- --var ADMIN_PASSWORD:local-ci-only > "$RUNNER_TEMP/wrangler.log" 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          if ! curl --fail --silent --show-error --retry 30 --retry-all-errors --retry-delay 1 --max-time 2 http://localhost:8787/api/health; then
+            cat "$RUNNER_TEMP/wrangler.log"
+            exit 1
+          fi
+          npm test
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cloudflare-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Configure production D1 binding
+        env:
+          D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
+        run: node scripts/configure-d1.mjs
+      - name: Apply remote D1 migrations and deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          : "${CLOUDFLARE_API_TOKEN:?Set the CLOUDFLARE_API_TOKEN Actions secret}"
+          : "${CLOUDFLARE_ACCOUNT_ID:?Set CLOUDFLARE_ACCOUNT_ID as an Actions variable or secret}"
+          npm run db:remote
+          npm run deploy
