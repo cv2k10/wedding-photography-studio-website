@@ -51,8 +51,8 @@ Under **Settings → Secrets and variables → Actions**, configure:
 
 | Name | Type | Value |
 | --- | --- | --- |
-| `CLOUDFLARE_API_TOKEN` | Secret | Cloudflare API token scoped to the deployment account, with Workers Scripts: Edit and D1: Edit permissions. |
-| `CLOUDFLARE_ACCOUNT_ID` | Variable or secret | Cloudflare account ID. |
-| `CLOUDFLARE_D1_DATABASE_ID` | Variable | ID of the existing `wedding-studio` D1 database. Optional if the real ID is already in `wrangler.jsonc`. |
+| `CLOUDFLARE_API_TOKEN` | Secret | Cloudflare API token scoped to the deployment account, with Workers Scripts: Edit and D1: Edit permissions, plus permission to list accounts for automatic discovery. |
+| `CLOUDFLARE_ACCOUNT_ID` | Variable or secret | Optional account ID override. Required if the token can see more than one account. |
+| `CLOUDFLARE_D1_DATABASE_ID` | Variable | Optional D1 database ID override. Without it the workflow reuses or creates `wedding-studio`. |
 
 The workflow never seeds remote demo data or changes the Worker’s `ADMIN_PASSWORD` secret. Set that secret separately in Cloudflare.

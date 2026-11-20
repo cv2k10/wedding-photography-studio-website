@@ -51,16 +51,18 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Configure production D1 binding
+      - name: Discover Cloudflare account and provision D1
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.CLOUDFLARE_D1_DATABASE_ID }}
+        run: |
+          node scripts/provision-d1.mjs
+      - name: Configure production D1 binding
         run: node scripts/configure-d1.mjs
       - name: Apply remote D1 migrations and deploy Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          : "${CLOUDFLARE_API_TOKEN:?Set the CLOUDFLARE_API_TOKEN Actions secret}"
-          : "${CLOUDFLARE_ACCOUNT_ID:?Set CLOUDFLARE_ACCOUNT_ID as an Actions variable or secret}"
           npm run db:remote
           npm run deploy
